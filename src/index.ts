@@ -3,6 +3,7 @@ import express from "express";
 import { paymentMiddleware, x402ResourceServer } from "@x402/express";
 import { ExactEvmScheme } from "@x402/evm/exact/server";
 import { HTTPFacilitatorClient } from "@x402/core/server";
+import { Mppx, tempo } from "mppx/express";
 import { searchFace } from "./facecheck.js";
 import { getOpenApiSpec } from "./openapi.js";
 
@@ -20,6 +21,12 @@ if (!PAY_TO) {
   process.exit(1);
 }
 
+const MPP_SECRET_KEY = process.env.MPP_SECRET_KEY;
+if (!MPP_SECRET_KEY) {
+  console.error("MPP_SECRET_KEY is required");
+  process.exit(1);
+}
+
 const facilitatorUrl =
   process.env.FACILITATOR_URL ||
   "https://api.cdp.coinbase.com/platform/v2/x402";
@@ -29,11 +36,24 @@ const PORT = parseInt(process.env.PORT || "4021", 10);
 const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
 
 const BASE_NETWORK = "eip155:8453"; // Base mainnet
+const TEMPO_USDC = "0x20C000000000000000000000b9537d11c60E8b50";
+
+// MPP/Tempo payment handler
+const mppx = Mppx.create({
+  methods: [
+    tempo.charge({
+      currency: TEMPO_USDC,
+      recipient: PAY_TO,
+    }),
+  ],
+  secretKey: MPP_SECRET_KEY,
+  realm: new URL(BASE_URL).hostname,
+});
 
 const app = express();
 app.use(express.json({ limit: "20mb" }));
 
-// MPP discovery endpoint
+// MPP discovery endpoint (OpenAPI 3.1.0 with x-payment-info)
 app.get("/openapi.json", (_req, res) => {
   res.json(getOpenApiSpec(BASE_URL));
 });
@@ -62,6 +82,10 @@ app.use(
     ),
   ),
 );
+
+// MPP/Tempo payment middleware — Tempo mainnet USDC
+// Amount is in token units (6 decimals): $0.40 = 400000
+app.post("/api/face-search", mppx.charge({ amount: "400000" }));
 
 // Face search endpoint
 app.post("/api/face-search", async (req, res) => {
@@ -94,6 +118,8 @@ app.post("/api/face-search", async (req, res) => {
 app.listen(PORT, () => {
   console.log(`Face Search MPP server running at ${BASE_URL}`);
   console.log(`OpenAPI spec: ${BASE_URL}/openapi.json`);
-  console.log(`Payment: $0.40/call via x402 on Base (${BASE_NETWORK})`);
+  console.log(`Payment: $0.40/call`);
+  console.log(`  - Base USDC via x402 (${BASE_NETWORK})`);
+  console.log(`  - Tempo USDC via MPP (eip155:4217)`);
   console.log(`Pay to: ${PAY_TO}`);
 });
