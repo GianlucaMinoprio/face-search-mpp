@@ -14,11 +14,7 @@ if (!FACECHECK_API_TOKEN) {
   process.exit(1);
 }
 
-const evmAddress = process.env.EVM_ADDRESS as `0x${string}`;
-if (!evmAddress) {
-  console.error("EVM_ADDRESS is required");
-  process.exit(1);
-}
+const PAY_TO = "0x4E04D236A5aEd4EB7d95E0514c4c8394c690BB58" as const;
 
 const facilitatorUrl =
   process.env.FACILITATOR_URL || "https://x402.org/facilitator";
@@ -27,7 +23,12 @@ const facilitatorClient = new HTTPFacilitatorClient({ url: facilitatorUrl });
 const PORT = parseInt(process.env.PORT || "4021", 10);
 const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
 
-const NETWORK = "eip155:8453"; // Base mainnet
+const BASE_NETWORK = "eip155:8453"; // Base mainnet
+const TEMPO_NETWORK = "eip155:4217"; // Tempo mainnet
+
+// Tempo USDC.e (bridged via Stargate)
+const TEMPO_USDC = "0x20C000000000000000000000b9537d11c60E8b50";
+const TEMPO_USDC_DECIMALS = 6;
 
 const app = express();
 app.use(express.json({ limit: "20mb" }));
@@ -36,6 +37,17 @@ app.use(express.json({ limit: "20mb" }));
 app.get("/openapi.json", (_req, res) => {
   res.json(getOpenApiSpec(BASE_URL));
 });
+
+// Custom EVM scheme for Tempo with its USDC address
+const tempoScheme = new ExactEvmScheme().registerMoneyParser(
+  async (amount, network) => {
+    if (network !== TEMPO_NETWORK) return null;
+    const units = BigInt(
+      Math.round(amount * 10 ** TEMPO_USDC_DECIMALS),
+    ).toString();
+    return { amount: units, asset: TEMPO_USDC };
+  },
+);
 
 // x402 payment middleware
 app.use(
@@ -46,8 +58,14 @@ app.use(
           {
             scheme: "exact",
             price: "$0.40",
-            network: NETWORK,
-            payTo: evmAddress,
+            network: BASE_NETWORK,
+            payTo: PAY_TO,
+          },
+          {
+            scheme: "exact",
+            price: "$0.40",
+            network: TEMPO_NETWORK,
+            payTo: PAY_TO,
           },
         ],
         description:
@@ -55,10 +73,9 @@ app.use(
         mimeType: "application/json",
       },
     },
-    new x402ResourceServer(facilitatorClient).register(
-      NETWORK,
-      new ExactEvmScheme(),
-    ),
+    new x402ResourceServer(facilitatorClient)
+      .register(BASE_NETWORK, new ExactEvmScheme())
+      .register(TEMPO_NETWORK, tempoScheme),
   ),
 );
 
@@ -93,5 +110,8 @@ app.post("/api/face-search", async (req, res) => {
 app.listen(PORT, () => {
   console.log(`Face Search MPP server running at ${BASE_URL}`);
   console.log(`OpenAPI spec: ${BASE_URL}/openapi.json`);
-  console.log(`Payment: $0.40/call via x402 on Base (${NETWORK})`);
+  console.log(`Payment: $0.40/call via x402`);
+  console.log(`  - Base USDC (${BASE_NETWORK})`);
+  console.log(`  - Tempo USDC (${TEMPO_NETWORK})`);
+  console.log(`  - Pay to: ${PAY_TO}`);
 });
