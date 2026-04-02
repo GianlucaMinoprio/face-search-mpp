@@ -28,8 +28,7 @@ if (!MPP_SECRET_KEY) {
 }
 
 const facilitatorUrl =
-  process.env.FACILITATOR_URL ||
-  "https://api.cdp.coinbase.com/platform/v2/x402";
+  process.env.FACILITATOR_URL || "https://facilitator.payai.network";
 const facilitatorClient = new HTTPFacilitatorClient({ url: facilitatorUrl });
 
 const PORT = parseInt(process.env.PORT || "4021", 10);
