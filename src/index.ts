@@ -14,7 +14,11 @@ if (!FACECHECK_API_TOKEN) {
   process.exit(1);
 }
 
-const PAY_TO = "0x4E04D236A5aEd4EB7d95E0514c4c8394c690BB58" as const;
+const PAY_TO = process.env.EVM_ADDRESS as `0x${string}`;
+if (!PAY_TO) {
+  console.error("EVM_ADDRESS is required");
+  process.exit(1);
+}
 
 const facilitatorUrl =
   process.env.FACILITATOR_URL || "https://x402.org/facilitator";
