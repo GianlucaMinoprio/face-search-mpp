@@ -85,7 +85,7 @@ const x402Mw = paymentMiddleware(
   ),
 ) as RequestHandler;
 
-const mppMw = mppx.charge({ amount: "400000" }) as RequestHandler;
+const mppMw = mppx.charge({ amount: "0.40" }) as RequestHandler;
 
 // Route to the right payment middleware based on request headers:
 // - x-payment header → x402 (Base USDC)
