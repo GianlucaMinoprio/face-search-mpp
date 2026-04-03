@@ -1,5 +1,3 @@
-import FormData from "form-data";
-
 const FACECHECK_BASE = "https://facecheck.id";
 
 interface FaceCheckMatch {
@@ -31,7 +29,7 @@ async function uploadImage(
   apiToken: string,
 ): Promise<string> {
   const form = new FormData();
-  form.append("images", imageBuffer, { filename, contentType: "image/jpeg" });
+  form.append("images", new Blob([new Uint8Array(imageBuffer)], { type: "image/jpeg" }), filename);
   form.append("id_search", "");
 
   const res = await fetch(`${FACECHECK_BASE}/api/upload_pic`, {
@@ -40,7 +38,7 @@ async function uploadImage(
       Authorization: apiToken,
       Accept: "application/json",
     },
-    body: form as unknown as BodyInit,
+    body: form,
   });
 
   if (!res.ok) {
