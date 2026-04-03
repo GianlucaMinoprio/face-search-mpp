@@ -52,6 +52,11 @@ const mppx = Mppx.create({
 const app = express();
 app.use(express.json({ limit: "20mb" }));
 
+// Health check
+app.get("/", (_req, res) => {
+  res.json({ status: "ok" });
+});
+
 // MPP discovery endpoint (OpenAPI 3.1.0 with x-payment-info)
 app.get("/openapi.json", (_req, res) => {
   res.json(getOpenApiSpec(BASE_URL));
@@ -115,6 +120,7 @@ app.post("/api/face-search", async (req, res) => {
 });
 
 app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Listening on 0.0.0.0:${PORT}`);
   console.log(`Face Search MPP server running at ${BASE_URL}`);
   console.log(`OpenAPI spec: ${BASE_URL}/openapi.json`);
   console.log(`Payment: $0.40/call`);
