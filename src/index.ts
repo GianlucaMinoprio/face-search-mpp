@@ -1,5 +1,5 @@
 import { config } from "dotenv";
-import express from "express";
+import express, { type RequestHandler } from "express";
 import { paymentMiddleware, x402ResourceServer } from "@x402/express";
 import { ExactEvmScheme } from "@x402/evm/exact/server";
 import { HTTPFacilitatorClient } from "@x402/core/server";
@@ -62,34 +62,40 @@ app.get("/openapi.json", (_req, res) => {
   res.json(getOpenApiSpec(BASE_URL));
 });
 
-// x402 payment middleware — Base mainnet USDC
-app.use(
-  paymentMiddleware(
-    {
-      "POST /api/face-search": {
-        accepts: [
-          {
-            scheme: "exact",
-            price: "$0.40",
-            network: BASE_NETWORK,
-            payTo: PAY_TO,
-          },
-        ],
-        description:
-          "Search for a person by face photo and return the most probable identity",
-        mimeType: "application/json",
-      },
+// Payment middlewares
+const x402Mw = paymentMiddleware(
+  {
+    "POST /api/face-search": {
+      accepts: [
+        {
+          scheme: "exact",
+          price: "$0.40",
+          network: BASE_NETWORK,
+          payTo: PAY_TO,
+        },
+      ],
+      description:
+        "Search for a person by face photo and return the most probable identity",
+      mimeType: "application/json",
     },
-    new x402ResourceServer(facilitatorClient).register(
-      BASE_NETWORK,
-      new ExactEvmScheme(),
-    ),
+  },
+  new x402ResourceServer(facilitatorClient).register(
+    BASE_NETWORK,
+    new ExactEvmScheme(),
   ),
-);
+) as RequestHandler;
 
-// MPP/Tempo payment middleware — Tempo mainnet USDC
-// Amount is in token units (6 decimals): $0.40 = 400000
-app.post("/api/face-search", mppx.charge({ amount: "400000" }));
+const mppMw = mppx.charge({ amount: "400000" }) as RequestHandler;
+
+// Route to the right payment middleware based on request headers:
+// - x-payment header → x402 (Base USDC)
+// - otherwise → MPP/Tempo (handles both MPP-authorized and no-payment 402 challenge)
+app.post("/api/face-search", ((req, res, next) => {
+  if (req.headers["x-payment"]) {
+    return x402Mw(req, res, next);
+  }
+  return mppMw(req, res, next);
+}) as RequestHandler);
 
 // Face search endpoint
 app.post("/api/face-search", async (req, res) => {
