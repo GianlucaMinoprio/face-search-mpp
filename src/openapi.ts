@@ -76,7 +76,10 @@ export function getOpenApiSpec(baseUrl: string) {
               currency: "USD",
               amount: "0.400000",
             },
-            protocols: [{ x402: {} }, { mpp: {} }],
+            protocols: [
+              { x402: {} },
+              { mpp: { method: "", intent: "", currency: "" } },
+            ],
           },
           requestBody: {
             required: true,
