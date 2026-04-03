@@ -1,11 +1,34 @@
 export function getOpenApiSpec(baseUrl: string) {
+  const matchSchema = {
+    type: "object",
+    properties: {
+      score: { type: "number", description: "Confidence score 0-100" },
+      confidence: {
+        type: "string",
+        enum: ["high", "possible", "unlikely"],
+        description: "Confidence label: high (70+), possible (60-69), unlikely (<60)",
+      },
+      url: { type: "string", description: "Webpage URL where the face was found" },
+      source: { type: "string", description: "Domain name (e.g. linkedin.com)" },
+      isProfile: {
+        type: "boolean",
+        description: "True if the URL is a social/professional profile (LinkedIn, GitHub, etc.)",
+      },
+      thumbnail: {
+        type: "string",
+        description: "Base64-encoded WebP thumbnail (included for top 5 matches only)",
+      },
+      guid: { type: "string", description: "Unique result identifier" },
+    },
+  };
+
   return {
     openapi: "3.1.0",
     info: {
       title: "Face Search",
       description:
         "Pay-per-call face search API. Upload a photo and get the highest-probability identity matches from across the internet.",
-      version: "1.0.0",
+      version: "2.0.0",
       "x-guidance": [
         "## Face Search API",
         "",
@@ -13,17 +36,22 @@ export function getOpenApiSpec(baseUrl: string) {
         "",
         "### Usage",
         "- Send a POST to `/api/face-search` with a JSON body containing `image` (base64-encoded image data) and optional `filename`.",
-        "- The service searches the internet for matching faces and returns the highest-confidence match plus all other matches sorted by score.",
+        "- The service searches the internet for matching faces and returns ranked matches.",
         "",
         "### Response",
         "The response includes:",
-        "- `match`: the single best match (highest confidence score), or null if no match found",
-        "- `allMatches`: all matches sorted by descending score",
+        "- `bestProfile`: the highest-scoring match from a social/professional profile (LinkedIn, GitHub, etc.), or null",
+        "- `bestMatch`: the single highest-scoring match overall, or null",
+        "- `matches`: top 20 matches (score >= 55), sorted with profiles first, then by score",
+        "- `totalRawMatches`: total number of raw matches before filtering",
         "",
         "Each match contains:",
         "- `score`: confidence 0-100",
+        "- `confidence`: 'high' (70+), 'possible' (60-69), or 'unlikely' (<60)",
         "- `url`: the webpage where the face was found",
-        "- `thumbnail`: base64-encoded WebP thumbnail of the matched face",
+        "- `source`: the domain name",
+        "- `isProfile`: true if from a known social/professional platform",
+        "- `thumbnail`: base64-encoded WebP thumbnail (top 5 matches only, empty string otherwise)",
         "- `guid`: unique identifier for the result",
       ].join("\n"),
       contact: {
@@ -80,52 +108,29 @@ export function getOpenApiSpec(baseUrl: string) {
                 "application/json": {
                   schema: {
                     type: "object",
+                    required: ["bestProfile", "bestMatch", "matches", "totalRawMatches"],
                     properties: {
-                      match: {
-                        anyOf: [
-                          {
-                            type: "object",
-                            properties: {
-                              score: {
-                                type: "number",
-                                description: "Confidence score 0-100",
-                              },
-                              url: {
-                                type: "string",
-                                description:
-                                  "Webpage URL where the matching face was found",
-                              },
-                              thumbnail: {
-                                type: "string",
-                                description:
-                                  "Base64-encoded WebP thumbnail of the matched face",
-                              },
-                              guid: {
-                                type: "string",
-                                description: "Unique result identifier",
-                              },
-                            },
-                          },
-                          { type: "null" },
-                        ],
+                      bestProfile: {
+                        anyOf: [matchSchema, { type: "null" }],
                         description:
-                          "The highest-confidence match, or null if no match found",
+                          "Highest-scoring match from a social/professional profile, or null",
                       },
-                      allMatches: {
+                      bestMatch: {
+                        anyOf: [matchSchema, { type: "null" }],
+                        description:
+                          "Highest-scoring match overall, or null",
+                      },
+                      matches: {
                         type: "array",
-                        description: "All matches sorted by descending score",
-                        items: {
-                          type: "object",
-                          properties: {
-                            score: { type: "number" },
-                            url: { type: "string" },
-                            thumbnail: { type: "string" },
-                            guid: { type: "string" },
-                          },
-                        },
+                        description:
+                          "Top 20 matches (score >= 55), profiles first then by score",
+                        items: matchSchema,
+                      },
+                      totalRawMatches: {
+                        type: "integer",
+                        description: "Total raw matches before filtering",
                       },
                     },
-                    required: ["match", "allMatches"],
                   },
                 },
               },

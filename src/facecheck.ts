@@ -1,5 +1,20 @@
 const FACECHECK_BASE = "https://facecheck.id";
 
+const MIN_SCORE = 55;
+const HIGH_CONFIDENCE_SCORE = 70;
+const MAX_MATCHES = 20;
+
+const PROFILE_DOMAINS = [
+  "linkedin.com",
+  "xing.com",
+  "github.com",
+  "facebook.com",
+  "instagram.com",
+  "twitter.com",
+  "x.com",
+  "tiktok.com",
+];
+
 interface FaceCheckMatch {
   score: number;
   url: string;
@@ -8,19 +23,57 @@ interface FaceCheckMatch {
   index: number;
 }
 
+type Confidence = "high" | "possible" | "unlikely";
+
+interface MatchResult {
+  score: number;
+  confidence: Confidence;
+  url: string;
+  source: string;
+  isProfile: boolean;
+  thumbnail: string;
+  guid: string;
+}
+
 interface FaceSearchResult {
-  match: {
-    score: number;
-    url: string;
-    thumbnail: string;
-    guid: string;
-  } | null;
-  allMatches: Array<{
-    score: number;
-    url: string;
-    thumbnail: string;
-    guid: string;
-  }>;
+  bestProfile: MatchResult | null;
+  bestMatch: MatchResult | null;
+  matches: MatchResult[];
+  totalRawMatches: number;
+}
+
+function getConfidence(score: number): Confidence {
+  if (score >= HIGH_CONFIDENCE_SCORE) return "high";
+  if (score >= 60) return "possible";
+  return "unlikely";
+}
+
+function getDomain(url: string): string {
+  try {
+    const host = new URL(url).hostname.replace(/^(www\.|m\.)/, "");
+    return host;
+  } catch {
+    return url;
+  }
+}
+
+function isProfileUrl(url: string): boolean {
+  const domain = getDomain(url);
+  return PROFILE_DOMAINS.some((d) => domain === d || domain.endsWith(`.${d}`));
+}
+
+function mapMatch(m: FaceCheckMatch, includeThumbnail: boolean): MatchResult {
+  return {
+    score: m.score,
+    confidence: getConfidence(m.score),
+    url: m.url,
+    source: getDomain(m.url),
+    isProfile: isProfileUrl(m.url),
+    thumbnail: includeThumbnail
+      ? `data:image/webp;base64,${m.base64}`
+      : "",
+    guid: m.guid,
+  };
 }
 
 async function uploadImage(
@@ -111,19 +164,36 @@ export async function searchFace(
   apiToken: string,
 ): Promise<FaceSearchResult> {
   const idSearch = await uploadImage(imageBuffer, filename, apiToken);
-  const matches = await pollSearch(idSearch, apiToken);
+  const rawMatches = await pollSearch(idSearch, apiToken);
 
-  const sorted = matches.sort((a, b) => b.score - a.score);
+  // Filter by minimum score, then sort: profiles first (by score), then others (by score)
+  const filtered = rawMatches
+    .filter((m) => m.score >= MIN_SCORE)
+    .sort((a, b) => {
+      const aProfile = isProfileUrl(a.url) ? 1 : 0;
+      const bProfile = isProfileUrl(b.url) ? 1 : 0;
+      if (aProfile !== bProfile) return bProfile - aProfile;
+      return b.score - a.score;
+    });
 
-  const mapMatch = (m: FaceCheckMatch) => ({
-    score: m.score,
-    url: m.url,
-    thumbnail: `data:image/webp;base64,${m.base64}`,
-    guid: m.guid,
-  });
+  // Only include thumbnails for top 5
+  const matches = filtered
+    .slice(0, MAX_MATCHES)
+    .map((m, i) => mapMatch(m, i < 5));
+
+  // Best profile match (LinkedIn, etc.)
+  const bestProfile = matches.find((m) => m.isProfile) ?? null;
+
+  // Best overall match by score
+  const allByScore = filtered.sort((a, b) => b.score - a.score);
+  const bestMatch = allByScore.length > 0
+    ? mapMatch(allByScore[0], true)
+    : null;
 
   return {
-    match: sorted.length > 0 ? mapMatch(sorted[0]) : null,
-    allMatches: sorted.map(mapMatch),
+    bestProfile,
+    bestMatch,
+    matches,
+    totalRawMatches: rawMatches.length,
   };
 }
