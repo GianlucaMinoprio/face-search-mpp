@@ -62,6 +62,22 @@ app.get("/openapi.json", (_req, res) => {
   res.json(getOpenApiSpec(BASE_URL));
 });
 
+// x402 well-known discovery
+app.get("/.well-known/x402", (_req, res) => {
+  res.json({
+    accepts: [
+      {
+        scheme: "exact",
+        network: BASE_NETWORK,
+        asset: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+        payTo: PAY_TO,
+        maxAmountRequired: "400000",
+      },
+    ],
+    facilitatorUrl,
+  });
+});
+
 // Payment middlewares
 const x402Mw = paymentMiddleware(
   {
