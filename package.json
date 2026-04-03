@@ -17,6 +17,9 @@
     "form-data": "^4.0.0",
     "mppx": "^0.5.4"
   },
+  "engines": {
+    "node": ">=18"
+  },
   "devDependencies": {
     "@types/express": "^5.0.1",
     "tsx": "^4.7.0",

@@ -114,7 +114,7 @@ app.post("/api/face-search", async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`Face Search MPP server running at ${BASE_URL}`);
   console.log(`OpenAPI spec: ${BASE_URL}/openapi.json`);
   console.log(`Payment: $0.40/call`);
