@@ -58,6 +58,10 @@ export function getOpenApiSpec(baseUrl: string) {
         name: "GianlucaMinoprio",
         url: "https://github.com/GianlucaMinoprio",
       },
+      "x-logo": {
+        url: `${baseUrl}/logo.png`,
+        altText: "Face Search MPP",
+      },
     },
     servers: [{ url: baseUrl }],
     "x-discovery": {

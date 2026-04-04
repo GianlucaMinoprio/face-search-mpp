@@ -1,3 +1,4 @@
+import path from "path";
 import { config } from "dotenv";
 import express, { type RequestHandler } from "express";
 import { paymentMiddleware, x402ResourceServer } from "@x402/express";
@@ -51,6 +52,7 @@ const mppx = Mppx.create({
 
 const app = express();
 app.use(express.json({ limit: "20mb" }));
+app.use(express.static(path.join(import.meta.dirname, "..", "public")));
 
 // Health check
 app.get("/", (_req, res) => {
