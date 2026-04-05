@@ -54,6 +54,11 @@ const app = express();
 app.use(express.json({ limit: "20mb" }));
 app.use(express.static(path.join(import.meta.dirname, "..", "public")));
 
+// Favicon
+app.get("/favicon.ico", (_req, res) => {
+  res.sendFile(path.join(import.meta.dirname, "..", "public", "favicon.png"));
+});
+
 // Health check
 app.get("/", (_req, res) => {
   res.json({ status: "ok" });
