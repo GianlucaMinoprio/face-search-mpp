@@ -47,7 +47,7 @@ const mppx = Mppx.create({
     }),
   ],
   secretKey: MPP_SECRET_KEY,
-  realm: new URL(BASE_URL).hostname,
+  realm: "facesearch.dev",
 });
 
 const app = express();
