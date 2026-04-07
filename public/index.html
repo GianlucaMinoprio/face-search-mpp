@@ -249,7 +249,7 @@
         <button class="agent-tab" data-agent="opencode">OpenCode</button>
         <button class="agent-tab" data-agent="cursor">Cursor</button>
       </div>
-      <div class="prompt-box" id="promptBox"><span class="prompt-prefix">$ </span><span id="promptText">claude "Read https://facesearch.dev/openapi.json and follow the instructions"</span></div>
+      <div class="prompt-box" id="promptBox"><span class="prompt-prefix">$ </span><span id="promptText">claude "Use https://mpp.dev/guides/payment-links.md as reference. Add mppx to my app with a payment-gated face search endpoint that charges $0.40 per request using the Tempo payment method with USDC. Enable payment links so browsers can pay directly from the page by setting html: true on the tempo() method config. When payment is verified, search for matching identities from the uploaded face image and return the results as JSON."</span></div>
       <button class="try-btn" id="tryBtn">Try with your Agent</button>
     </div>
 
@@ -259,11 +259,12 @@
   </div>
 
   <script>
+    const basePrompt = 'Use https://mpp.dev/guides/payment-links.md as reference. Add mppx to my app with a payment-gated face search endpoint that charges $0.40 per request using the Tempo payment method with USDC. Enable payment links so browsers can pay directly from the page by setting html: true on the tempo() method config. When payment is verified, search for matching identities from the uploaded face image and return the results as JSON.';
     const prompts = {
-      claude: 'claude "Read https://facesearch.dev/openapi.json and follow the instructions"',
-      codex: 'codex "Read https://facesearch.dev/openapi.json and follow the instructions"',
-      opencode: 'opencode "Read https://facesearch.dev/openapi.json and follow the instructions"',
-      cursor: 'cursor "Read https://facesearch.dev/openapi.json and follow the instructions"',
+      claude: 'claude "' + basePrompt + '"',
+      codex: 'codex "' + basePrompt + '"',
+      opencode: 'opencode "' + basePrompt + '"',
+      cursor: 'cursor "' + basePrompt + '"',
     };
 
     // Agent tabs
