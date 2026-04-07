@@ -103,6 +103,60 @@ app.post("/api/upload", express.raw({ type: "image/*", limit: "20mb" }), (req, r
   res.json({ id });
 });
 
+// HTML results page for browser payment link flow
+function renderResultsPage(result: {
+  bestProfile: { score: number; confidence: string; url: string; source: string; isProfile: boolean; thumbnail: string } | null;
+  bestMatch: { score: number; confidence: string; url: string; source: string; isProfile: boolean; thumbnail: string } | null;
+  matches: { score: number; confidence: string; url: string; source: string; isProfile: boolean; thumbnail: string }[];
+  totalRawMatches: number;
+}): string {
+  const dotColor = (c: string) => c === "high" ? "#6ee7b7" : c === "possible" ? "#fbbf24" : "#f87171";
+
+  const matchRows = result.matches.map((m) => {
+    const thumb = m.thumbnail
+      ? `<img src="${m.thumbnail}" style="width:48px;height:48px;border-radius:6px;object-fit:cover">`
+      : `<div style="width:48px;height:48px;border-radius:6px;background:#222;display:flex;align-items:center;justify-content:center;color:#555;font-size:18px">?</div>`;
+    const badge = m.isProfile ? `<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:#1a1a3a;color:#88c">Profile</span>` : "";
+    return `<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #1a1a1a">
+      ${thumb}
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:500">${m.source} ${badge}</div>
+        <a href="${m.url}" target="_blank" rel="noopener" style="font-size:12px;color:#666;text-decoration:none;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m.url}</a>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+        <span style="width:8px;height:8px;border-radius:50%;background:${dotColor(m.confidence)}"></span>
+        <span style="font-size:14px;font-weight:600;font-variant-numeric:tabular-nums">${m.score}</span>
+      </div>
+    </div>`;
+  }).join("");
+
+  const summary = result.bestProfile
+    ? `<div style="padding:16px;background:#111;border:1px solid #222;border-radius:8px;margin-bottom:24px">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.1em;color:#888;margin-bottom:8px">Best Profile Match</div>
+        <a href="${result.bestProfile.url}" target="_blank" rel="noopener" style="font-size:15px;color:#e0e0e0;text-decoration:none;font-weight:500">${result.bestProfile.url}</a>
+        <div style="font-size:13px;color:#888;margin-top:4px">Score: ${result.bestProfile.score} &middot; ${result.bestProfile.confidence} confidence</div>
+      </div>`
+    : "";
+
+  return `<!DOCTYPE html><html lang="en"><head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <title>Face Search Results</title>
+    <link rel="icon" href="/favicon.png" type="image/png">
+    <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'SF Mono','Fira Code','Consolas',monospace;background:#000;color:#e0e0e0;line-height:1.6;-webkit-font-smoothing:antialiased}a:hover{text-decoration:underline!important}</style>
+  </head><body>
+    <div style="max-width:680px;margin:0 auto;padding:48px 24px 64px">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.1em;color:#888;margin-bottom:8px">Face Search Results</div>
+      <div style="font-size:13px;color:#555;margin-bottom:24px">${result.totalRawMatches} total matches found &middot; showing top ${result.matches.length}</div>
+      ${summary}
+      <div>${matchRows}</div>
+      <div style="margin-top:32px;text-align:center">
+        <a href="/" style="font-size:12px;color:#666;text-decoration:none">Back to Face Search</a>
+      </div>
+    </div>
+  </body></html>`;
+}
+
 // Payment middlewares
 const x402Mw = paymentMiddleware(
   {
@@ -208,7 +262,12 @@ app.get(
 
     try {
       const result = await searchFace(imageBuffer, filename, FACECHECK_API_TOKEN);
-      res.json(result);
+      const wantsHtml = req.headers.accept?.includes("text/html");
+      if (wantsHtml) {
+        res.type("html").send(renderResultsPage(result));
+      } else {
+        res.json(result);
+      }
     } catch (err) {
       console.error("Face search failed:", err);
       res
