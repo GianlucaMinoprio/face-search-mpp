@@ -166,8 +166,7 @@
       border: 1px solid #222;
       border-top: none;
       border-radius: 0 0 8px 8px;
-      padding: 20px;
-      padding-right: 60px;
+      padding: 16px;
       font-family: inherit;
       font-size: 13px;
       line-height: 1.7;
@@ -180,24 +179,6 @@
       color: #6ee7b7;
       user-select: none;
     }
-
-    .copy-btn {
-      position: absolute;
-      top: 12px;
-      right: 12px;
-      background: #1a1a1a;
-      border: 1px solid #333;
-      color: #888;
-      font-size: 11px;
-      font-family: inherit;
-      padding: 4px 10px;
-      border-radius: 4px;
-      cursor: pointer;
-      transition: background 0.2s, color 0.2s;
-    }
-
-    .copy-btn:hover { background: #222; color: #ccc; }
-    .copy-btn.copied { color: #6ee7b7; border-color: #1a3a2a; }
 
     .try-btn {
       display: block;
@@ -268,11 +249,8 @@
         <button class="agent-tab" data-agent="opencode">OpenCode</button>
         <button class="agent-tab" data-agent="cursor">Cursor</button>
       </div>
-      <div class="prompt-box" id="promptBox">
-        <span class="prompt-prefix">$ </span><span id="promptText">claude "Read https://facesearch.dev/openapi.json and follow the instructions"</span>
-        <button class="copy-btn" id="copyBtn">Copy</button>
-      </div>
-      <a class="try-btn" id="tryBtn" href="https://claude.ai" target="_blank" rel="noopener">Try with your Agent</a>
+      <div class="prompt-box" id="promptBox"><span class="prompt-prefix">$ </span><span id="promptText">claude "Read https://facesearch.dev/openapi.json and follow the instructions"</span></div>
+      <button class="try-btn" id="tryBtn">Try with your Agent</button>
     </div>
 
     <footer>
@@ -297,10 +275,10 @@
       });
     });
 
-    // Copy
-    document.getElementById('copyBtn').addEventListener('click', async () => {
+    // Try with your Agent = copy prompt
+    document.getElementById('tryBtn').addEventListener('click', async () => {
       const text = document.getElementById('promptText').textContent;
-      const btn = document.getElementById('copyBtn');
+      const btn = document.getElementById('tryBtn');
       try { await navigator.clipboard.writeText(text); } catch {
         const ta = document.createElement('textarea');
         ta.value = text;
@@ -310,8 +288,7 @@
         document.body.removeChild(ta);
       }
       btn.textContent = 'Copied!';
-      btn.classList.add('copied');
-      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+      setTimeout(() => { btn.textContent = 'Try with your Agent'; }, 2000);
     });
 
     // File upload
