@@ -112,7 +112,7 @@
       margin-bottom: 48px;
     }
 
-    .file-upload:hover { border-color: #555; }
+    .file-upload:hover, .file-upload.dragover { border-color: #555; background: #1a1a1a; }
 
     .file-upload-text {
       font-size: 13px;
@@ -234,7 +234,7 @@
     <p class="section-desc">Upload a face photo to search for matching identities across the internet.</p>
     <label class="file-upload" id="fileUpload">
       <input type="file" id="fileInput" accept="image/*" hidden>
-      <span class="file-upload-text">Choose a file from your computer</span>
+      <span class="file-upload-text">Drop a photo here or click to choose</span>
       <span class="file-upload-status" id="fileStatus"></span>
     </label>
 
@@ -292,14 +292,14 @@
       setTimeout(() => { btn.textContent = 'Try with your Agent'; }, 2000);
     });
 
-    // File upload
-    document.getElementById('fileInput').addEventListener('change', async (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
+    // File upload (click + drag-and-drop)
+    const uploadZone = document.getElementById('fileUpload');
+    const status = document.getElementById('fileStatus');
 
-      const status = document.getElementById('fileStatus');
+    async function uploadFile(file) {
+      if (!file || !file.type.startsWith('image/')) return;
       status.textContent = 'Uploading...';
-
+      status.style.color = '#6ee7b7';
       try {
         const res = await fetch('/api/upload', {
           method: 'POST',
@@ -312,6 +312,25 @@
         status.textContent = 'Upload failed';
         status.style.color = '#f87171';
       }
+    }
+
+    document.getElementById('fileInput').addEventListener('change', (e) => {
+      if (e.target.files[0]) uploadFile(e.target.files[0]);
+    });
+
+    uploadZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadZone.classList.add('dragover');
+    });
+
+    uploadZone.addEventListener('dragleave', () => {
+      uploadZone.classList.remove('dragover');
+    });
+
+    uploadZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadZone.classList.remove('dragover');
+      if (e.dataTransfer.files[0]) uploadFile(e.dataTransfer.files[0]);
     });
   </script>
 </body>
