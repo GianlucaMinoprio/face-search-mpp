@@ -78,7 +78,7 @@ function mapMatch(m: FaceCheckMatch, includeThumbnail: boolean): MatchResult {
     source: getDomain(m.url),
     isProfile: isProfileUrl(m.url),
     thumbnail: includeThumbnail
-      ? `data:image/webp;base64,${m.base64}`
+      ? (m.base64.startsWith("data:") ? m.base64 : `data:image/webp;base64,${m.base64}`)
       : "",
     guid: m.guid,
   };
