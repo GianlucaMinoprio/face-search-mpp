@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import path from "path";
 import { config } from "dotenv";
 import express, { type RequestHandler } from "express";
@@ -44,6 +45,7 @@ const mppx = Mppx.create({
     tempo.charge({
       currency: TEMPO_USDC,
       recipient: PAY_TO,
+      html: true,
     }),
   ],
   secretKey: MPP_SECRET_KEY,
@@ -59,8 +61,13 @@ app.get("/favicon.ico", (_req, res) => {
   res.sendFile(path.join(import.meta.dirname, "..", "public", "favicon.png"));
 });
 
-// Health check
+// Landing page
 app.get("/", (_req, res) => {
+  res.sendFile(path.join(import.meta.dirname, "..", "public", "index.html"));
+});
+
+// Health check
+app.get("/healthz", (_req, res) => {
   res.json({ status: "ok" });
 });
 
@@ -83,6 +90,17 @@ app.get("/.well-known/x402", (_req, res) => {
     ],
     facilitatorUrl,
   });
+});
+
+// Temporary image store for file uploads (expires after 10 minutes)
+const uploads = new Map<string, { buffer: Buffer; filename: string }>();
+
+app.post("/api/upload", express.raw({ type: "image/*", limit: "20mb" }), (req, res) => {
+  const id = crypto.randomBytes(16).toString("hex");
+  const filename = (req.headers["x-filename"] as string) || "face.jpg";
+  uploads.set(id, { buffer: Buffer.from(req.body as Buffer), filename });
+  setTimeout(() => uploads.delete(id), 10 * 60 * 1000);
+  res.json({ id });
 });
 
 // Payment middlewares
@@ -108,7 +126,10 @@ const x402Mw = paymentMiddleware(
   ),
 ) as RequestHandler;
 
-const mppMw = mppx.charge({ amount: "0.40" }) as RequestHandler;
+const mppMw = mppx.charge({
+  amount: "0.40",
+  description: "Face search - find matching identities from a photo",
+}) as RequestHandler;
 
 // Route to the right payment middleware based on request headers:
 // - x-payment header → x402 (Base USDC)
@@ -120,7 +141,7 @@ app.post("/api/face-search", ((req, res, next) => {
   return mppMw(req, res, next);
 }) as RequestHandler);
 
-// Face search endpoint
+// Face search endpoint (POST — programmatic clients with base64 image)
 app.post("/api/face-search", async (req, res) => {
   const { image, filename } = req.body as {
     image?: string;
@@ -147,6 +168,55 @@ app.post("/api/face-search", async (req, res) => {
       .json({ error: err instanceof Error ? err.message : "Search failed" });
   }
 });
+
+// Face search via URL or upload ID (GET — payment link flow for browsers)
+app.get(
+  "/api/face-search",
+  mppMw,
+  async (req, res) => {
+    const imageUrl = req.query.url as string | undefined;
+    const uploadId = req.query.id as string | undefined;
+
+    let imageBuffer: Buffer;
+    let filename: string;
+
+    if (uploadId) {
+      const upload = uploads.get(uploadId);
+      if (!upload) {
+        res.status(400).json({ error: "Upload expired or not found" });
+        return;
+      }
+      imageBuffer = upload.buffer;
+      filename = upload.filename;
+    } else if (imageUrl) {
+      try {
+        const imageRes = await fetch(imageUrl);
+        if (!imageRes.ok) {
+          res.status(400).json({ error: `Failed to fetch image: ${imageRes.status}` });
+          return;
+        }
+        imageBuffer = Buffer.from(await imageRes.arrayBuffer());
+        filename = imageUrl.split("/").pop() || "face.jpg";
+      } catch (err) {
+        res.status(400).json({ error: "Failed to fetch image from URL" });
+        return;
+      }
+    } else {
+      res.status(400).json({ error: "Missing required query param: url or id" });
+      return;
+    }
+
+    try {
+      const result = await searchFace(imageBuffer, filename, FACECHECK_API_TOKEN);
+      res.json(result);
+    } catch (err) {
+      console.error("Face search failed:", err);
+      res
+        .status(500)
+        .json({ error: err instanceof Error ? err.message : "Search failed" });
+    }
+  },
+);
 
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Listening on 0.0.0.0:${PORT}`);

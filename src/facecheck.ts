@@ -57,6 +57,14 @@ function getDomain(url: string): string {
   }
 }
 
+function guessMimeType(filename: string): string {
+  const ext = filename.split(".").pop()?.toLowerCase();
+  if (ext === "png") return "image/png";
+  if (ext === "webp") return "image/webp";
+  if (ext === "gif") return "image/gif";
+  return "image/jpeg";
+}
+
 function isProfileUrl(url: string): boolean {
   const domain = getDomain(url);
   return PROFILE_DOMAINS.some((d) => domain === d || domain.endsWith(`.${d}`));
@@ -82,7 +90,8 @@ async function uploadImage(
   apiToken: string,
 ): Promise<string> {
   const form = new FormData();
-  form.append("images", new Blob([new Uint8Array(imageBuffer)], { type: "image/jpeg" }), filename);
+  const mimeType = guessMimeType(filename);
+  form.append("images", new Blob([new Uint8Array(imageBuffer)], { type: mimeType }), filename);
   form.append("id_search", "");
 
   const res = await fetch(`${FACECHECK_BASE}/api/upload_pic`, {
