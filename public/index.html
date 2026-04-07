@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark">
+  <title>Face Search</title>
+  <link rel="icon" href="/favicon.png" type="image/png">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Consolas', 'Liberation Mono', monospace;
+      background: #000;
+      color: #e0e0e0;
+      line-height: 1.6;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 48px 24px 64px;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 12px;
+    }
+
+    .header img {
+      height: 36px;
+      border-radius: 6px;
+      filter: invert(1) brightness(1.2);
+    }
+
+    .header h1 {
+      font-size: 14px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #e0e0e0;
+    }
+
+    .title {
+      font-size: 32px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      color: #888;
+      font-size: 13px;
+      margin-bottom: 16px;
+    }
+
+    .badges {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 48px;
+    }
+
+    .badge {
+      font-size: 11px;
+      font-weight: 500;
+      padding: 3px 10px;
+      border-radius: 4px;
+      border: 1px solid #222;
+      background: #111;
+      color: #888;
+    }
+
+    .badge.price {
+      color: #6ee7b7;
+      border-color: #1a3a2a;
+      background: #0a1a10;
+    }
+
+    h2 {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 16px;
+      color: #888;
+    }
+
+    .section-desc {
+      color: #666;
+      font-size: 13px;
+      margin-bottom: 20px;
+    }
+
+    /* File upload */
+    .file-upload {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 16px;
+      background: #111;
+      border: 1px dashed #333;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: border-color 0.2s;
+      margin-bottom: 48px;
+    }
+
+    .file-upload:hover { border-color: #555; }
+
+    .file-upload-text {
+      font-size: 13px;
+      color: #888;
+    }
+
+    .file-upload-status {
+      font-size: 12px;
+      color: #6ee7b7;
+    }
+
+    .divider {
+      height: 1px;
+      background: #1a1a1a;
+      margin: 48px 0;
+    }
+
+    /* Agent prompt block */
+    .prompt-section { margin-bottom: 48px; }
+
+    .agent-tabs {
+      display: flex;
+      gap: 0;
+      border-bottom: 1px solid #222;
+      margin-bottom: 0;
+    }
+
+    .agent-tab {
+      padding: 10px 20px;
+      font-size: 12px;
+      font-weight: 500;
+      font-family: inherit;
+      background: none;
+      border: none;
+      color: #555;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: color 0.2s;
+    }
+
+    .agent-tab:hover { color: #999; }
+
+    .agent-tab.active {
+      color: #e0e0e0;
+      border-bottom-color: #e0e0e0;
+    }
+
+    .prompt-box {
+      position: relative;
+      background: #111;
+      border: 1px solid #222;
+      border-top: none;
+      border-radius: 0 0 8px 8px;
+      padding: 20px;
+      padding-right: 60px;
+      font-family: inherit;
+      font-size: 13px;
+      line-height: 1.7;
+      color: #ccc;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .prompt-prefix {
+      color: #6ee7b7;
+      user-select: none;
+    }
+
+    .copy-btn {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      color: #888;
+      font-size: 11px;
+      font-family: inherit;
+      padding: 4px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .copy-btn:hover { background: #222; color: #ccc; }
+    .copy-btn.copied { color: #6ee7b7; border-color: #1a3a2a; }
+
+    .try-btn {
+      display: block;
+      width: 100%;
+      padding: 14px;
+      margin-top: 16px;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      background: #e0e0e0;
+      color: #000;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      text-align: center;
+      text-decoration: none;
+      transition: opacity 0.2s;
+    }
+
+    .try-btn:hover { opacity: 0.9; }
+
+    footer {
+      text-align: center;
+      font-size: 11px;
+      color: #444;
+      padding-top: 24px;
+      border-top: 1px solid #1a1a1a;
+    }
+
+    footer a {
+      color: #666;
+      text-decoration: none;
+    }
+
+    footer a:hover { text-decoration: underline; }
+
+    @media (max-width: 480px) {
+      .container { padding: 32px 16px 48px; }
+      .title { font-size: 24px; }
+      .agent-tab { padding: 8px 14px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="title">Face Search</div>
+    <p class="subtitle">Pay-per-call face search API. Upload a photo, find the identity.</p>
+
+    <!-- Try it -->
+    <h2>Try it</h2>
+    <p class="section-desc">Upload a face photo to search for matching identities across the internet.</p>
+    <label class="file-upload" id="fileUpload">
+      <input type="file" id="fileInput" accept="image/*" hidden>
+      <span class="file-upload-text">Choose a file from your computer</span>
+      <span class="file-upload-status" id="fileStatus"></span>
+    </label>
+
+    <div class="divider"></div>
+
+    <!-- Use with your Agent -->
+    <div class="prompt-section">
+      <h2>Use with your Agent</h2>
+      <div class="agent-tabs">
+        <button class="agent-tab active" data-agent="claude">Claude</button>
+        <button class="agent-tab" data-agent="codex">Codex</button>
+        <button class="agent-tab" data-agent="opencode">OpenCode</button>
+        <button class="agent-tab" data-agent="cursor">Cursor</button>
+      </div>
+      <div class="prompt-box" id="promptBox">
+        <span class="prompt-prefix">$ </span><span id="promptText">claude "Read https://facesearch.dev/openapi.json and follow the instructions"</span>
+        <button class="copy-btn" id="copyBtn">Copy</button>
+      </div>
+      <a class="try-btn" id="tryBtn" href="https://claude.ai" target="_blank" rel="noopener">Try with your Agent</a>
+    </div>
+
+    <footer>
+      <p>Powered by <a href="https://facecheck.id">FaceCheck.id</a> &middot; Payments via <a href="https://mpp.dev">MPP</a> &middot; <a href="/openapi.json">API Spec</a></p>
+    </footer>
+  </div>
+
+  <script>
+    const prompts = {
+      claude: 'claude "Read https://facesearch.dev/openapi.json and follow the instructions"',
+      codex: 'codex "Read https://facesearch.dev/openapi.json and follow the instructions"',
+      opencode: 'opencode "Read https://facesearch.dev/openapi.json and follow the instructions"',
+      cursor: 'cursor "Read https://facesearch.dev/openapi.json and follow the instructions"',
+    };
+
+    // Agent tabs
+    document.querySelectorAll('.agent-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.agent-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById('promptText').textContent = prompts[tab.dataset.agent];
+      });
+    });
+
+    // Copy
+    document.getElementById('copyBtn').addEventListener('click', async () => {
+      const text = document.getElementById('promptText').textContent;
+      const btn = document.getElementById('copyBtn');
+      try { await navigator.clipboard.writeText(text); } catch {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+    });
+
+    // File upload
+    document.getElementById('fileInput').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const status = document.getElementById('fileStatus');
+      status.textContent = 'Uploading...';
+
+      try {
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': file.type, 'X-Filename': file.name },
+          body: file,
+        });
+        const { id } = await res.json();
+        window.location.href = '/api/face-search?id=' + id;
+      } catch {
+        status.textContent = 'Upload failed';
+        status.style.color = '#f87171';
+      }
+    });
+  </script>
+</body>
+</html>
